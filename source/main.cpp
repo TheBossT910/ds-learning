@@ -10,8 +10,9 @@
 #include <nds.h>
 #include <stdio.h>
 
-#include "background.h"
-#include "moon.h"
+#include "skyBackground.h"
+#include "roomBackground.h"
+#include "moonSprite.h"
 
 //a simple sprite structure
 //it is generally preferred to separate your game object
@@ -28,6 +29,7 @@ typedef struct
 } MySprite;
 
 volatile int frame = 0;
+int bg[2];
 
 // fn for the interrupt
 void Vblank() {
@@ -40,7 +42,7 @@ int main(void) {
 	irqSet(IRQ_VBLANK, Vblank);
 
 	// set video mode for 2 text layers and 2 extended background layers
-	videoSetMode(MODE_5_2D);
+	videoSetMode(MODE_0_2D);
 	// set sub video mode for 4 text layers
 	videoSetModeSub(MODE_0_2D);
 
@@ -49,20 +51,39 @@ int main(void) {
 	// map vram bank B to main engine sprites (slot 0)
 	vramSetBankB(VRAM_B_MAIN_SPRITE);
 
+	// enable extended palettes
+	bgExtPaletteEnable();
+
 	// debug init
 	consoleDemoInit();
 
 	// set brightness on bottom screen to completely dark (no visible image)
 	setBrightness(2, -16);
 
-	// setup bitmap background (for background image) on background 3
-	int bg3 = bgInit(3, BgType_Bmp8, BgSize_B8_256x256, 0, 0);
-	bgSetPriority(bg3, 3);
-	dmaCopy(backgroundBitmap, bgGetGfxPtr(bg3), 256*256);
-	dmaCopy(backgroundPal, BG_PALETTE, 256*2);
-	
-	// TODO: setup moon as sprite
-	// creating 3 sprites with different color formats
+	// initialize backgrounds
+	// check https://mtheall.com/vram.html to ensure bg fit in vram
+	bg[0] = bgInit(0, BgType_Text8bpp, BgSize_T_256x256, 31, 4);	// room
+	bg[1] = bgInit(1, BgType_Text8bpp, BgSize_T_256x256, 27, 0);	// sky
+
+	// copy graphics to vram
+	dmaCopy(roomBackgroundTiles,  bgGetGfxPtr(bg[0]), roomBackgroundTilesLen);
+  	dmaCopy(skyBackgroundTiles, bgGetGfxPtr(bg[1]), skyBackgroundTilesLen);
+
+	// copy maps to vram
+	dmaCopy(roomBackgroundMap,  bgGetMapPtr(bg[0]), roomBackgroundMapLen);
+  	dmaCopy(skyBackgroundMap, bgGetMapPtr(bg[1]), skyBackgroundMapLen);
+
+	vramSetBankE(VRAM_E_LCD); // for main engine
+
+	// copy palettes to extended palette area
+	dmaCopy(roomBackgroundPal,  &VRAM_E_EXT_PALETTE[0][0],  roomBackgroundPalLen);  // bg 0, slot 0
+	dmaCopy(skyBackgroundPal, &VRAM_E_EXT_PALETTE[1][12], skyBackgroundPalLen); // bg 1, slot 12
+
+	// map vram to extended palette
+	vramSetBankE(VRAM_E_BG_EXT_PALETTE);
+	bgUpdate();
+
+	// showing moon as 3 sprites
 	MySprite sprites[] = {
 		{0, SpriteSize_32x32, SpriteColorFormat_256Color, 0, 15, 20, 15},
 		{0, SpriteSize_32x32, SpriteColorFormat_256Color, 0, 0, 20, 80},
@@ -73,12 +94,12 @@ int main(void) {
 	oamInit(&oamMain, SpriteMapping_1D_128, false);
 	
 	// allocating space for sprite graphics
-	u16* moonGfxPtr = oamAllocateGfx(&oamMain, SpriteSize_32x32, SpriteColorFormat_256Color);
-	dmaCopy(moonTiles, moonGfxPtr, moonTilesLen);
-    dmaCopy(moonPal, SPRITE_PALETTE, moonPalLen);
+	u16* moonSpriteGfxPtr = oamAllocateGfx(&oamMain, SpriteSize_32x32, SpriteColorFormat_256Color);
+	dmaCopy(moonSpriteTiles, moonSpriteGfxPtr, moonSpriteTilesLen);
+    dmaCopy(moonSpritePal, SPRITE_PALETTE, moonSpritePalLen);
 
 	for(int i = 0; i < 3; i++)
-      sprites[i].gfx = moonGfxPtr;
+      sprites[i].gfx = moonSpriteGfxPtr;
 
 	for(int i = 0; i < 3; i++) {
 		oamSet(
@@ -115,7 +136,7 @@ int main(void) {
 
 	// fade top screen in
 	// blend control. takes effect mode / source / destination
-	REG_BLDCNT = BLEND_ALPHA | BLEND_SRC_BG3 | BLEND_DST_BACKDROP;
+	REG_BLDCNT = BLEND_ALPHA | BLEND_SRC_BG1 | BLEND_DST_BACKDROP;
 	for(int i = 0; i <= 16; i++) {
 		// source opacity / dest opacity. They should add up to 16
 		REG_BLDALPHA = i | ((16 - i) << 8);
