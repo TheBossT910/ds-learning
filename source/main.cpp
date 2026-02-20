@@ -11,6 +11,7 @@
 #include <stdio.h>
 
 #include "background.h"
+#include "moon.h"
 
 //a simple sprite structure
 //it is generally preferred to separate your game object
@@ -56,35 +57,28 @@ int main(void) {
 
 	// setup bitmap background (for background image) on background 3
 	int bg3 = bgInit(3, BgType_Bmp8, BgSize_B8_256x256, 0, 0);
+	bgSetPriority(bg3, 3);
 	dmaCopy(backgroundBitmap, bgGetGfxPtr(bg3), 256*256);
 	dmaCopy(backgroundPal, BG_PALETTE, 256*2);
 	
 	// TODO: setup moon as sprite
 	// creating 3 sprites with different color formats
 	MySprite sprites[] = {
-		{0, SpriteSize_32x32, SpriteColorFormat_Bmp, 0, 15, 20, 15},
+		{0, SpriteSize_32x32, SpriteColorFormat_256Color, 0, 15, 20, 15},
 		{0, SpriteSize_32x32, SpriteColorFormat_256Color, 0, 0, 20, 80},
-		{0, SpriteSize_32x32, SpriteColorFormat_16Color, 0, 1, 20, 136}
+		{0, SpriteSize_32x32, SpriteColorFormat_256Color, 0, 1, 20, 136}
 	};
 
 	// initialize sub sprite engine with 1D mapping, 128 byte boundry, no external palette support
-	oamInit(&oamMain, SpriteMapping_Bmp_1D_128, false);
+	oamInit(&oamMain, SpriteMapping_1D_128, false);
 	
 	// allocating space for sprite graphics
+	u16* moonGfxPtr = oamAllocateGfx(&oamMain, SpriteSize_32x32, SpriteColorFormat_256Color);
+	dmaCopy(moonTiles, moonGfxPtr, moonTilesLen);
+    dmaCopy(moonPal, SPRITE_PALETTE, moonPalLen);
+
 	for(int i = 0; i < 3; i++)
-      sprites[i].gfx = oamAllocateGfx(&oamMain, sprites[i].size, sprites[i].format);
-
-	// fill bmp sprite with the color red
-	dmaFillHalfWords(ARGB16(1,31,0,0), sprites[0].gfx, 32*32*2);
-	// fill the 256 color sprite with index 1 (2 pixels at a time)
-	dmaFillHalfWords((1<<8)|1, sprites[1].gfx, 32*32);
-	// fill the 16 color sprite with index 1 (4 pixels at a time)
-	dmaFillHalfWords((1<<12)|(1<<8)|(1<<4)|1, sprites[2].gfx, 32*32 / 2);
-
-	// set index 1 to blue...this will be the 256 color sprite
-	SPRITE_PALETTE[1] = RGB15(0,31,0);
-	// set index 17 to green...this will be the 16 color sprite
-	SPRITE_PALETTE[16 + 1] = RGB15(0,0,31);
+      sprites[i].gfx = moonGfxPtr;
 
 	for(int i = 0; i < 3; i++) {
 		oamSet(

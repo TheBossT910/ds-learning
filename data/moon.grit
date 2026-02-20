@@ -1,5 +1,4 @@
-# 8 bit bitmap
+-gt
 -gB8
-
-# bitmap format
--gb
+-m!
+-p
