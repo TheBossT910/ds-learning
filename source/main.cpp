@@ -77,7 +77,7 @@ int main(void) {
 
 	// copy palettes to extended palette area
 	dmaCopy(roomBackgroundPal,  &VRAM_E_EXT_PALETTE[0][0],  roomBackgroundPalLen);  // bg 0, slot 0
-	dmaCopy(skyBackgroundPal, &VRAM_E_EXT_PALETTE[1][12], skyBackgroundPalLen); // bg 1, slot 12
+	dmaCopy(skyBackgroundPal, &VRAM_E_EXT_PALETTE[1][12], skyBackgroundPalLen); // bg 1, slot 12 (specified slot in .grit file)
 
 	// map vram to extended palette
 	vramSetBankE(VRAM_E_BG_EXT_PALETTE);
@@ -85,16 +85,16 @@ int main(void) {
 
 	// showing moon as 3 sprites
 	MySprite sprites[] = {
-		{0, SpriteSize_32x32, SpriteColorFormat_256Color, 0, 15, 20, 15},
-		{0, SpriteSize_32x32, SpriteColorFormat_256Color, 0, 0, 20, 80},
-		{0, SpriteSize_32x32, SpriteColorFormat_256Color, 0, 1, 20, 136}
+		{0, SpriteSize_64x64, SpriteColorFormat_256Color, 0, 15, 0, 0},
+		{0, SpriteSize_64x64, SpriteColorFormat_256Color, 0, 0, 64, 0},
+		{0, SpriteSize_64x64, SpriteColorFormat_256Color, 0, 1, 128, 0}
 	};
 
 	// initialize sub sprite engine with 1D mapping, 128 byte boundry, no external palette support
 	oamInit(&oamMain, SpriteMapping_1D_128, false);
 	
 	// allocating space for sprite graphics
-	u16* moonSpriteGfxPtr = oamAllocateGfx(&oamMain, SpriteSize_32x32, SpriteColorFormat_256Color);
+	u16* moonSpriteGfxPtr = oamAllocateGfx(&oamMain, SpriteSize_64x64, SpriteColorFormat_256Color);
 	dmaCopy(moonSpriteTiles, moonSpriteGfxPtr, moonSpriteTilesLen);
     dmaCopy(moonSpritePal, SPRITE_PALETTE, moonSpritePalLen);
 
@@ -142,7 +142,7 @@ int main(void) {
 		REG_BLDALPHA = i | ((16 - i) << 8);
 	
 		// wait for duration amount of frames
-		for (int frame = 0; frame <= 4; frame++) {
+		for (int frame = 0; frame <= 6; frame++) {
 			swiWaitForVBlank();
 		}
 	}
