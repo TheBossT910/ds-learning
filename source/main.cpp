@@ -12,6 +12,7 @@
 
 #include "skyBackground.h"
 #include "roomBackground.h"
+#include "silhouetteBackground.h"
 #include "moonSprite.h"
 
 //a simple sprite structure
@@ -29,7 +30,7 @@ typedef struct
 } MySprite;
 
 volatile int frame = 0;
-int bg[2];
+int bg[3];
 
 // fn for the interrupt
 void Vblank() {
@@ -62,22 +63,27 @@ int main(void) {
 
 	// initialize backgrounds
 	// check https://mtheall.com/vram.html to ensure bg fit in vram
-	bg[0] = bgInit(0, BgType_Text8bpp, BgSize_T_256x256, 31, 4);	// room
-	bg[1] = bgInit(1, BgType_Text8bpp, BgSize_T_256x256, 27, 0);	// sky
+	bg[0] = bgInit(0, BgType_Text8bpp, BgSize_T_256x256, 9, 6);	// silhouette
+	bg[1] = bgInit(1, BgType_Text8bpp, BgSize_T_256x256, 10, 0);	// room
+	bg[2] = bgInit(2, BgType_Text8bpp, BgSize_T_256x256, 11, 2);	// sky
+	
 
 	// copy graphics to vram
-	dmaCopy(roomBackgroundTiles,  bgGetGfxPtr(bg[0]), roomBackgroundTilesLen);
-  	dmaCopy(skyBackgroundTiles, bgGetGfxPtr(bg[1]), skyBackgroundTilesLen);
+	dmaCopy(silhouetteBackgroundTiles,  bgGetGfxPtr(bg[0]), silhouetteBackgroundTilesLen);
+	dmaCopy(roomBackgroundTiles,  bgGetGfxPtr(bg[1]), roomBackgroundTilesLen);
+  	dmaCopy(skyBackgroundTiles, bgGetGfxPtr(bg[2]), skyBackgroundTilesLen);
 
 	// copy maps to vram
-	dmaCopy(roomBackgroundMap,  bgGetMapPtr(bg[0]), roomBackgroundMapLen);
-  	dmaCopy(skyBackgroundMap, bgGetMapPtr(bg[1]), skyBackgroundMapLen);
+	dmaCopy(silhouetteBackgroundMap,  bgGetMapPtr(bg[0]), silhouetteBackgroundMapLen);
+	dmaCopy(roomBackgroundMap,  bgGetMapPtr(bg[1]), roomBackgroundMapLen);
+  	dmaCopy(skyBackgroundMap, bgGetMapPtr(bg[2]), skyBackgroundMapLen);
 
 	vramSetBankE(VRAM_E_LCD); // for main engine
 
 	// copy palettes to extended palette area
-	dmaCopy(roomBackgroundPal,  &VRAM_E_EXT_PALETTE[0][0],  roomBackgroundPalLen);  // bg 0, slot 0
-	dmaCopy(skyBackgroundPal, &VRAM_E_EXT_PALETTE[1][12], skyBackgroundPalLen); // bg 1, slot 12 (specified slot in .grit file)
+	dmaCopy(silhouetteBackgroundPal, &VRAM_E_EXT_PALETTE[0][0], silhouetteBackgroundPalLen); // bg 0, slot 0
+	dmaCopy(roomBackgroundPal,  &VRAM_E_EXT_PALETTE[1][0],  roomBackgroundPalLen);  // bg 1, slot 0
+	dmaCopy(skyBackgroundPal, &VRAM_E_EXT_PALETTE[2][12], skyBackgroundPalLen); // bg 2, slot 12 (specified slot in .grit file)
 
 	// map vram to extended palette
 	vramSetBankE(VRAM_E_BG_EXT_PALETTE);
@@ -136,7 +142,7 @@ int main(void) {
 
 	// fade top screen in
 	// blend control. takes effect mode / source / destination
-	REG_BLDCNT = BLEND_ALPHA | BLEND_SRC_BG1 | BLEND_DST_BACKDROP;
+	REG_BLDCNT = BLEND_ALPHA | BLEND_SRC_BG2 | BLEND_DST_BACKDROP;
 	for(int i = 0; i <= 16; i++) {
 		// source opacity / dest opacity. They should add up to 16
 		REG_BLDALPHA = i | ((16 - i) << 8);
