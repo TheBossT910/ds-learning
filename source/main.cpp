@@ -63,7 +63,7 @@ int main(void) {
 
 	// initialize backgrounds
 	// check https://mtheall.com/vram.html to ensure bg fit in vram
-	bg[0] = bgInit(0, BgType_Text8bpp, BgSize_T_256x256, 9, 6);	// silhouette
+	bg[0] = bgInit(0, BgType_Text8bpp, BgSize_T_512x512, 12, 6);	// silhouette
 	bg[1] = bgInit(1, BgType_Text8bpp, BgSize_T_256x256, 10, 0);	// room
 	bg[2] = bgInit(2, BgType_Text8bpp, BgSize_T_256x256, 11, 2);	// sky
 	
@@ -87,7 +87,6 @@ int main(void) {
 
 	// map vram to extended palette
 	vramSetBankE(VRAM_E_BG_EXT_PALETTE);
-	bgUpdate();
 
 	// showing moon as 3 sprites
 	MySprite sprites[] = {
@@ -140,6 +139,13 @@ int main(void) {
 	iprintf("\x1b[23;31HTest!");
 	iprintf("\x1b[11;11HPress Start");
 
+	// for slide in animation
+	// move camera to the empty right half of the 512px wide background
+	int silhouetteX = -256;
+	int silhouetteY = 192;
+	bgSetScroll(bg[0], -silhouetteX, -silhouetteY);
+	bgUpdate();
+
 	// fade top screen in
 	// blend control. takes effect mode / source / destination
 	REG_BLDCNT = BLEND_ALPHA | BLEND_SRC_BG2 | BLEND_DST_BACKDROP;
@@ -162,6 +168,7 @@ int main(void) {
  
 	while(pmMainLoop()) {
 		swiWaitForVBlank();
+		bgUpdate();
 		scanKeys();
 		int keys = keysDown();
 
@@ -194,6 +201,21 @@ int main(void) {
 		if (brightnessCounter >= brightness) {
 			brightnessCounter = 0;
 		}
+
+		// scroll silhouette background
+		// animate X (moving right towards 0)
+		if (silhouetteX < 0 && frame % 5 == 0) {
+			silhouetteX += (-silhouetteX) / 5 + 1;
+			if (silhouetteX > 0) silhouetteX = 0;
+		}
+
+		// animate Y (moving up towards 0)
+		if (silhouetteY > 0 && frame % 5 == 0) {
+			silhouetteY += (-silhouetteY) / 5 + 1; 
+			if (silhouetteY < 0) silhouetteY = 0;
+		}
+
+		bgSetScroll(bg[0], -silhouetteX, -silhouetteY);
 	}
 
 	return 0;
